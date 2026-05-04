@@ -3,80 +3,79 @@ import joblib
 import numpy as np
 
 
-# 1. Load Model and Assets
-@st.cache_resource
-def load_assets():
-    # Ensure these filenames match your saved files
-    model = joblib.load('model.joblib')
-    encoder = joblib.load('encoder.joblib')
-    return model, encoder
+# ======     ===================
+# 1. LOAD MODEL + ENCODER
+# =========================
+model = joblib.load("model.pkl")
+encoder = joblib.load("label_encoder.pkl")
 
+# 2. Application UI
+st.set_page_config(page_title="Diabetes Predictor", layout="wide")
+st.title("🩺 Health Diagnostic System")
 
-try:
-    model, encoder = load_assets()
-except Exception as e:
-    st.error(f"Error loading model files: {e}")
-    st.stop()
+if model:
+    # Everything inside this 'with' block belongs to the form
+    with st.form("main_form"):
+        col1, col2, col3 = st.columns(3)
 
-# 2. User Input Interface
-st.set_page_config(page_title="Disease Prediction System", layout="centered")
-st.title("🩺 Medical Disease Prediction")
-st.markdown("Enter the patient details below to predict the likely condition.")
+        with col1:
+            st.subheader("Demographics")
+            age = st.number_input("Age", 1, 120, 30)
+            gender = st.selectbox("Gender", [0, 1], format_func=lambda x: "Male" if x == 1 else "Female")
+            bmi = st.number_input("BMI", 10.0, 50.0, 22.0)
 
-with st.form("prediction_form"):
-    st.subheader("Patient Information")
+        with col2:
+            st.subheader("Lifestyle")
+            smoking = st.selectbox("Smoker", [0, 1], format_func=lambda x: "Yes" if x == 1 else "No")
+            alcohol = st.selectbox("Alcohol Consumption", [0, 1],
+                                   format_func=lambda x: "High/Moderate" if x == 1 else "Low/None")
+            exercise = st.selectbox("Regular Exercise", [0, 1], format_func=lambda x: "Yes" if x == 1 else "No")
 
-    col1, col2 = st.columns(2)
+        with col3:
+            st.subheader("Clinical Vitals")
+            bp = st.number_input("Systolic Blood Pressure", 80, 200, 120)
+            chol = st.number_input("Cholesterol Level", 100, 400, 200)
+            glucose = st.number_input("Glucose Level", 50, 300, 100)
 
-    with col1:
-        age = st.number_input("Age", min_value=0, max_value=120, value=30)
-        gender = st.selectbox("Gender", options=[0, 1], format_func=lambda x: "Male" if x == 1 else "Female")
-        blood_pressure = st.number_input("Blood Pressure (systolic)", value=120)
-        cholesterol = st.number_input("Cholesterol Level", value=200)
-        glucose = st.number_input("Glucose Level", value=100)
-        bmi = st.number_input("BMI", value=22.5)
+        st.divider()
+        st.subheader("Medical History")
+        h_col1, h_col2, h_col3 = st.columns(3)
+        with h_col1:
+            alz = st.checkbox("Alzheimer's History")
+            heart_dis = st.checkbox("Heart Disease History")
+        with h_col2:
+            stroke = st.checkbox("Previous Stroke")
+            chronic = st.checkbox("Other Chronic Conditions")
+        with h_col3:
+            meds = st.checkbox("On Regular Medication")
+            fam_hist = st.checkbox("Family History of Diabetes")
+            fatigue = st.checkbox("Frequent Fatigue/Weakness")
 
-    with col2:
-        # Binary Symptom/History Inputs
-        smoking = st.toggle("Smoking History")
-        alcohol = st.toggle("Alcohol Consumption")
-        exercise = st.toggle("Regular Exercise")
-        family_history = st.toggle("Family History of Disease")
+        # This button MUST be the last thing inside the 'with st.form' block
+        submit = st.form_submit_button("Analyze Health Data")
 
-        st.write("Existing Conditions:")
-        alzheimers = st.checkbox("Alzheimer's Disease")
-        heart_disease = st.checkbox("Heart Disease")
-        stroke = st.checkbox("Stroke")
-        kidney_disease = st.checkbox("Kidney Disease")
-        cancer = st.checkbox("Cancer")
-        copd = st.checkbox("COPD")
-        liver_disease = st.checkbox("Liver Disease")
-        parkinsons = st.checkbox("Parkinson's Disease")
-        tuberculosis = st.checkbox("Tuberculosis")
+    # 3. Prediction Logic (Triggers after the button is clicked)
+    if submit:
+        # We must maintain the 19-feature shape for the model[cite: 5]
+        # Features removed from UI (Heart Rate, Oxygen, Temp) are set to 0
+        features = np.array([[
+            age, gender, int(alz), bp, chol, glucose,
+            smoking, alcohol, exercise, bmi,
+            0,  # Heart Rate (Removed)
+            int(heart_dis), int(stroke),
+            0,  # Oxygen Saturation (Removed)
+            0,  # Body Temperature (Removed)
+            int(chronic), int(meds), int(fam_hist), int(fatigue)
+        ]])
 
-    submit = st.form_submit_button("Predict Disease")
+        # Generate the numerical prediction[cite: 5]
+        prediction = model.predict(features)[0]
 
-# 3. Prediction System & 4. Output Display
-if submit:
-    # Arrange inputs in the exact order the model expects
-    features = np.array([[
-        age, gender, int(alzheimers), blood_pressure, cholesterol,
-        glucose, int(smoking), int(alcohol), int(exercise), bmi,
-        int(family_history), int(heart_disease), int(stroke),
-        int(kidney_disease), int(cancer), int(copd),
-        int(liver_disease), int(parkinsons), int(tuberculosis)
-    ]])
-
-    with st.spinner("Analyzing data..."):
-        # The pipeline automatically handles the StandardScaler
-        prediction_encoded = model.predict(features)
-
-        # Decode the result to show the disease name
-        prediction_name = encoder.inverse_transform(prediction_encoded)[0]
-
-    st.success("Analysis Complete")
-    st.metric(label="Predicted Condition", value=f"{prediction_name}")
-
-    # Optional: Probability visualization
-    probs = model.predict_proba(features)[0]
-    st.info(f"Prediction Confidence: {max(probs) * 100:.2f}%")
+        st.divider()
+        if prediction == 1:
+            st.error("### Result: You have Diabetes")
+        else:
+            st.success("### Result: You do not have Diabetes")
+else:
+    st.warning("Please ensure 'model.pkl' is in the project folder.")
+    # streamlit run app.py
