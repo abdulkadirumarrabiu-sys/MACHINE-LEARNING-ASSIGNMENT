@@ -9,6 +9,7 @@ import numpy as np
 model = joblib.load("model.pkl")
 encoder = joblib.load("label_encoder.pkl")
 
+
 # 2. Application UI
 st.set_page_config(page_title="Diabetes Predictor", layout="wide")
 st.title("🩺 Health Diagnostic System")
@@ -33,7 +34,7 @@ if model:
 
         with col3:
             st.subheader("Clinical Vitals")
-            bp = st.number_input("Systolic Blood Pressure", 80, 200, 120)
+            bp = st.number_input("  Blood Pressure", 80, 200, 120)
             chol = st.number_input("Cholesterol Level", 100, 400, 200)
             glucose = st.number_input("Glucose Level", 50, 300, 100)
 
@@ -45,11 +46,11 @@ if model:
             heart_dis = st.checkbox("Heart Disease History")
         with h_col2:
             stroke = st.checkbox("Previous Stroke")
-            chronic = st.checkbox("Other Chronic Conditions")
+
         with h_col3:
-            meds = st.checkbox("On Regular Medication")
+
             fam_hist = st.checkbox("Family History of Diabetes")
-            fatigue = st.checkbox("Frequent Fatigue/Weakness")
+
 
         # This button MUST be the last thing inside the 'with st.form' block
         submit = st.form_submit_button("Analyze Health Data")
@@ -65,7 +66,7 @@ if model:
             int(heart_dis), int(stroke),
             0,  # Oxygen Saturation (Removed)
             0,  # Body Temperature (Removed)
-            int(chronic), int(meds), int(fam_hist), int(fatigue)
+            int(fam_hist)
         ]])
 
         # Generate the numerical prediction[cite: 5]
