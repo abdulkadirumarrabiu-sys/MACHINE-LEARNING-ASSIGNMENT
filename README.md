@@ -31,6 +31,10 @@ python train.py
 ### Run App
 streamlit run app.py
 
+
+## Project Structure
+
+
 ## Project Structure
 
 project/
